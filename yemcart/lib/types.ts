@@ -1,17 +1,22 @@
 export interface User {
   uid: string;
   email: string;
-  role: "buyer" | "seller";
+  role: "buyer" | "seller" | "admin";
   createdAt: Date;
 }
 
 export interface Product {
   id: string;
-  title: string;
+  name: string;
   price: number;
-  image: string;
   description?: string;
+  imageUrl: string;
+  imagePath?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  title?: string;
   sellerId?: string;
+  image?: string;
 }
 
 export interface AuthContextType {

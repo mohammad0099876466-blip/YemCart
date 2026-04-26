@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
       if (currentUser) {
         setUser(currentUser);
       } else {
