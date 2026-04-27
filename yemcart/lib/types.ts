@@ -3,6 +3,14 @@ export interface User {
   email: string;
   role: "buyer" | "seller" | "admin";
   createdAt: Date;
+  displayName?: string;
+  sellerVerified?: boolean;
+  storeName?: string;
+  storeLocation?: {
+    lat: number;
+    lng: number;
+  };
+  bankAccountName?: string;
 }
 
 export interface SellerInfo {

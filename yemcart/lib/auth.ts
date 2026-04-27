@@ -31,18 +31,25 @@ export async function registerUser(
       email: firebaseUser.email || "",
       role,
       createdAt: new Date(),
+      sellerVerified: role === "seller" ? false : undefined,
     };
 
     if (!db) {
       throw new Error("Firestore is unavailable.");
     }
 
-    await setDoc(doc(db, "users_data", firebaseUser.uid), {
+    const userPayload = {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       role,
+      sellerVerified: role === "seller" ? false : undefined,
       createdAt: serverTimestamp(),
-    });
+    };
+
+    await Promise.all([
+      setDoc(doc(db, "users_data", firebaseUser.uid), userPayload),
+      setDoc(doc(db, "users", firebaseUser.uid), userPayload),
+    ]);
 
     return newUser;
   } catch (error: unknown) {
@@ -72,6 +79,17 @@ export async function getUserData(uid: string): Promise<User | null> {
     email: String(data.email ?? ""),
     role: (data.role as User["role"]) || "buyer",
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+    displayName: data.displayName ? String(data.displayName) : undefined,
+    sellerVerified: Boolean(data.sellerVerified),
+    storeName: data.storeName ? String(data.storeName) : undefined,
+    bankAccountName: data.bankAccountName ? String(data.bankAccountName) : undefined,
+    storeLocation:
+      data.storeLocation && typeof data.storeLocation === "object"
+        ? {
+            lat: Number(data.storeLocation.lat || 0),
+            lng: Number(data.storeLocation.lng || 0),
+          }
+        : undefined,
   };
 }
 

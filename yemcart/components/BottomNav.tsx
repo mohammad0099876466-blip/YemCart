@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IconCart, IconHome, IconSearch, IconUser } from "@/components/Icons";
 
 const navItems = [
-  { label: "الرئيسية", href: "/", icon: "🏠" },
-  { label: "بحث", href: "/products", icon: "🔍" },
-  { label: "السلة", href: "/cart", icon: "🛒" },
-  { label: "حسابي", href: "/dashboard", icon: "👤" },
+  { label: "الرئيسية", href: "/", icon: <IconHome /> },
+  { label: "بحث", href: "/products", icon: <IconSearch /> },
+  { label: "السلة", href: "/cart", icon: <IconCart /> },
+  { label: "حسابي", href: "/dashboard", icon: <IconUser /> },
 ];
 
 export default function BottomNav() {
@@ -26,7 +27,7 @@ export default function BottomNav() {
                 active ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
+              <span>{item.icon}</span>
               <span>{item.label}</span>
             </Link>
           );

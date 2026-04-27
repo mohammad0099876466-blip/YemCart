@@ -139,29 +139,49 @@ export async function getProducts(): Promise<Product[]> {
     throw new Error("Firestore is unavailable.");
   }
 
-  const productsQuery = query(
-    collection(db, "products"),
-    where("published", "==", true),
-    orderBy("createdAt", "desc")
-  );
-  const snapshot = await getDocs(productsQuery);
-
-  return snapshot.docs.map((doc) => {
-    const data = doc.data() as DocumentData;
-    return {
-      id: doc.id,
-      name: data.name,
-      price: data.price,
-      description: data.description,
-      imageUrl: data.imageUrl,
-      imagePath: data.imagePath,
-      userId: data.userId,
-      category: data.category,
-      featured: data.featured,
-      published: data.published,
-      createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
-    } as Product;
-  });
+  try {
+    const productsQuery = query(
+      collection(db, "products"),
+      where("published", "==", true),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(productsQuery);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as DocumentData;
+      return {
+        id: doc.id,
+        name: data.name,
+        price: data.price,
+        description: data.description,
+        imageUrl: data.imageUrl,
+        imagePath: data.imagePath,
+        userId: data.userId,
+        category: data.category,
+        featured: data.featured,
+        published: data.published,
+        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
+      } as Product;
+    });
+  } catch {
+    const fallbackQuery = query(collection(db, "products"), where("published", "==", true));
+    const snapshot = await getDocs(fallbackQuery);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as DocumentData;
+      return {
+        id: doc.id,
+        name: data.name,
+        price: data.price,
+        description: data.description,
+        imageUrl: data.imageUrl,
+        imagePath: data.imagePath,
+        userId: data.userId,
+        category: data.category,
+        featured: data.featured,
+        published: data.published,
+        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
+      } as Product;
+    });
+  }
 }
 
 export async function getUserProducts(userId: string): Promise<Product[]> {

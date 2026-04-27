@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { getUserData, logoutUser } from "@/lib/auth";
 import { User as FirebaseUser } from "firebase/auth";
+import { IconUser } from "@/components/Icons";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -64,7 +65,9 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold text-gray-800 mb-2">لوحة التحكم</h1>
               <p className="text-gray-600">أهلاً وسهلاً بك في سوق اليمن</p>
             </div>
-            <div className="text-4xl">👤</div>
+            <div className="rounded-3xl bg-blue-100 p-4 text-blue-700">
+              <IconUser />
+            </div>
           </div>
 
           {/* User Info */}

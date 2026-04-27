@@ -7,7 +7,9 @@ import { useParams, useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { getProductById } from "@/lib/productService";
 import { getUserData } from "@/lib/auth";
+import { addUserCartItem, isUserFavorite, toggleUserFavorite } from "@/lib/storeService";
 import { Product } from "@/lib/types";
+import { IconHeartFilled, IconHeartOutline } from "@/components/Icons";
 import { User as FirebaseUser } from "firebase/auth";
 
 export default function ProductDetailPage() {
@@ -17,18 +19,27 @@ export default function ProductDetailPage() {
   const [sellerEmail, setSellerEmail] = useState<string | null>(null);
   const [sellerRole, setSellerRole] = useState<string | null>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [favorite, setFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (!auth) return;
-    const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser: FirebaseUser | null) => {
       setUser(currentUser);
+      if (currentUser && productId) {
+        try {
+          const isFav = await isUserFavorite(currentUser.uid, productId);
+          setFavorite(isFav);
+        } catch (error) {
+          console.error("Favorite status failed:", error);
+        }
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [productId]);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -60,13 +71,36 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [productId]);
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!user) {
       router.push("/login");
       return;
     }
 
-    alert("تمت إعادة توجيهك لإكمال عملية الشراء.");
+    if (!product) return;
+
+    try {
+      await addUserCartItem(user.uid, product);
+      router.push("/cart");
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+      setError(error instanceof Error ? error.message : "فشل إضافة المنتج إلى السلة.");
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user || !product) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const nextFavorite = await toggleUserFavorite(user.uid, product);
+      setFavorite(nextFavorite);
+    } catch (error) {
+      console.error("Favorite toggle failed:", error);
+      setError(error instanceof Error ? error.message : "فشل تحديث المفضلات.");
+    }
   };
 
   return (
@@ -131,10 +165,14 @@ export default function ProductDetailPage() {
                     onClick={handleBuy}
                     className="rounded-3xl bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
                   >
-                    {user ? "شراء الآن" : "تسجيل الدخول للشراء"}
+                    {user ? "أضف إلى السلة" : "تسجيل الدخول للشراء"}
                   </button>
-                  <button className="rounded-3xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-                    إضافة للمفضلة
+                  <button
+                    onClick={handleToggleFavorite}
+                    className="rounded-3xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 flex items-center justify-center gap-2"
+                  >
+                    {favorite ? <IconHeartFilled /> : <IconHeartOutline />}
+                    {favorite ? "محفوظ" : "أضف للمفضلة"}
                   </button>
                 </div>
               </div>
