@@ -2,29 +2,38 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getProducts, deleteProduct } from "@/lib/productService";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import { getUserProducts, deleteProduct } from "@/lib/productService";
 import { Product } from "@/lib/types";
+import { User as FirebaseUser } from "firebase/auth";
 
 export default function ProductsListPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const loadProducts = async () => {
-    try {
-      const items = await getProducts();
-      setProducts(items);
-    } catch (error: any) {
-      setError(error.message || "فشل تحميل المنتجات.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadProducts();
-  }, []);
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser: FirebaseUser | null) => {
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const items = await getUserProducts(currentUser.uid);
+        setProducts(items);
+      } catch (error: any) {
+        setError(error.message || "فشل تحميل المنتجات.");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleDelete = async (id: string, imagePath?: string) => {
     const confirmed = window.confirm("هل أنت متأكد أنك تريد حذف هذا المنتج؟");
@@ -47,9 +56,9 @@ export default function ProductsListPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">قائمة المنتجات</p>
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">إدارة المنتجات الحالية</h2>
-            <p className="mt-2 text-slate-600">يمكنك تعديل أو حذف أي منتج أو إضافة منتجات جديدة.</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">منتجاتي</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-900">المنتجات التي قمت بإنشائها</h2>
+            <p className="mt-2 text-slate-600">هذه القائمة تحتوي على المنتجات الخاصة بك فقط.</p>
           </div>
           <Link
             href="/dashboard/add-product"
@@ -68,7 +77,7 @@ export default function ProductsListPage() {
         <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">{error}</div>
       ) : products.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-600 shadow-sm">
-          لا توجد منتجات حتى الآن.
+          لم تقم بإضافة أي منتجات بعد.
         </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-2">

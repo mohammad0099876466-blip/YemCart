@@ -79,9 +79,12 @@ export default function DashboardPage() {
             >
               📦 تصفح المنتجات
             </Link>
-            <div className="bg-orange-500 text-white font-bold py-3 px-6 rounded-lg text-center opacity-60 cursor-not-allowed">
-              📝 بيع منتج (قريباً)
-            </div>
+            <Link
+              href="/dashboard/add-product"
+              className="block bg-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-orange-600 transition-colors text-center"
+            >
+              📝 إضافة منتج
+            </Link>
           </div>
 
           {/* Logout Button */}

@@ -11,12 +11,14 @@ export interface Product {
   price: number;
   description?: string;
   imageUrl: string;
+  title?: string;
+  image?: string;
   imagePath?: string;
+  userId?: string;
+  sellerId?: string;
+  published?: boolean;
   createdAt?: number;
   updatedAt?: number;
-  title?: string;
-  sellerId?: string;
-  image?: string;
 }
 
 export interface AuthContextType {

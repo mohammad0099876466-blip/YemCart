@@ -1,162 +1,164 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addProduct } from "@/lib/productService";
+import { auth } from "@/lib/firebase";
+import { addProductItem } from "@/lib/productService";
+import { User as FirebaseUser } from "firebase/auth";
 
 export default function AddProductPage() {
   const router = useRouter();
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState(0);
-  const [description, setDescription] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [price, setPrice] = useState<number>(0);
+  const [imageUrl, setImageUrl] = useState("");
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    setError(null);
-    setImageFile(file);
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
+      setUser(currentUser);
+      setLoading(false);
+    });
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setPreview(null);
-    }
-  };
+    return () => unsubscribe();
+  }, [router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setMessage(null);
-    setError(null);
+    setError("");
+    setSuccess("");
 
-    if (!name || !price || !description || !imageFile) {
-      setError("يرجى ملء جميع الحقول وتحميل صورة المنتج.");
+    if (!user) {
+      setError("يرجى تسجيل الدخول لإضافة المنتج.");
       return;
     }
 
-    setLoading(true);
+    if (!name.trim() || !price || !imageUrl.trim()) {
+      setError("جميع الحقول مطلوبة.");
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      await addProduct({
-        name,
+      await addProductItem({
+        name: name.trim(),
         price,
-        description,
-        imageFile,
+        imageUrl: imageUrl.trim(),
+        userId: user.uid,
       });
 
-      setMessage("تم إضافة المنتج بنجاح.");
       setName("");
       setPrice(0);
-      setDescription("");
-      setImageFile(null);
-      setPreview(null);
-      router.push("/dashboard/products");
+      setImageUrl("");
+      setSuccess("تمت إضافة المنتج بنجاح.");
     } catch (error: any) {
-      setError(error.message || "حدث خطأ أثناء حفظ المنتج.");
+      setError(error.message || "فشل إضافة المنتج.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">إضافة منتج جديد</p>
-          <h2 className="mt-3 text-3xl font-bold text-slate-900">أنشئ منتجك في السوق</h2>
-          <p className="mt-2 text-slate-600">أضف بيانات المنتج وصورة جذابة ليشاهده العملاء.</p>
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
+        <div className="rounded-3xl bg-white p-10 shadow-sm text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600 font-semibold">التحقق من الجلسة...</p>
         </div>
+      </main>
+    );
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">اسم المنتج</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="مثال: هاتف ذكي"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">السعر (USD)</span>
-              <input
-                type="number"
-                value={price || ""}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="مثال: 199"
-                min={0}
-              />
-            </label>
+  return (
+    <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">إضافة منتج جديد</p>
+            <h1 className="mt-4 text-4xl font-bold text-slate-900">أضف منتجك إلى المتجر</h1>
+            <p className="mt-3 text-slate-600">يمكنك إضافة منتج جديد، وسيظهر لجميع المستخدمين بعد الحفظ.</p>
           </div>
 
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-700">الوصف</span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-2 h-32 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="اكتب وصفاً مختصراً وجذاباً للمنتج"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">اسم المنتج</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="مثال: هاتف ذكي"
+                  disabled={saving}
+                />
+              </label>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">السعر (USD)</span>
+                <input
+                  type="number"
+                  value={price || ""}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  min={0}
+                  className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="مثال: 199"
+                  disabled={saving}
+                />
+              </label>
+            </div>
+
             <label className="block">
-              <span className="text-sm font-semibold text-slate-700">صورة المنتج</span>
+              <span className="text-sm font-semibold text-slate-700">رابط صورة المنتج</span>
               <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="mt-2 w-full text-sm text-slate-700"
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="https://"
+                disabled={saving}
               />
             </label>
 
-            {preview ? (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            {imageUrl.trim() && (
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 p-4">
                 <p className="mb-2 text-sm font-semibold text-slate-700">معاينة الصورة</p>
                 <img
-                  src={preview}
+                  src={imageUrl}
                   alt="معاينة المنتج"
-                  className="h-48 w-full rounded-3xl object-cover"
+                  className="h-64 w-full rounded-3xl object-cover"
                 />
               </div>
-            ) : (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-                اختر صورة للمعاينة بعد الرفع
-              </div>
             )}
-          </div>
 
-          {error && <div className="rounded-3xl bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-          {message && <div className="rounded-3xl bg-green-50 p-4 text-sm text-green-700">{message}</div>}
+            {success && <div className="rounded-3xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</div>}
+            {error && <div className="rounded-3xl bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center justify-center rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? "جاري حفظ المنتج..." : "إضافة المنتج"}
-            </button>
-            <Link
-              href="/dashboard/products"
-              className="inline-flex items-center justify-center rounded-3xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              العودة إلى قائمة المنتجات
-            </Link>
-          </div>
-        </form>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? "جاري الإضافة..." : "إضافة المنتج"}
+              </button>
+              <Link
+                href="/dashboard/products"
+                className="flex-1 inline-flex items-center justify-center rounded-3xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                عرض منتجاتي
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
