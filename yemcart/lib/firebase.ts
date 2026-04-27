@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { Product } from "./types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -18,5 +19,33 @@ const app = isBrowser && firebaseConfig.apiKey ? initializeApp(firebaseConfig) :
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
 export const storage = app ? getStorage(app) : null;
+
+function ensureDb() {
+  if (!db) {
+    throw new Error("Firestore غير متاح.");
+  }
+  return db;
+}
+
+export const getUserFavorites = async (userId: string): Promise<Product[]> => {
+  const snapshot = await getDocs(collection(ensureDb(), "favorites", userId, "items"));
+  return snapshot.docs.map((favDoc) => {
+    const data = favDoc.data() as Product;
+    return {
+      ...data,
+      id: favDoc.id,
+    };
+  });
+};
+
+export const addUserFavorite = async (userId: string, product: any) => {
+  const ref = doc(ensureDb(), "favorites", userId, "items", product.id);
+  await setDoc(ref, product);
+};
+
+export const removeUserFavorite = async (userId: string, productId: string) => {
+  const ref = doc(ensureDb(), "favorites", userId, "items", productId);
+  await deleteDoc(ref);
+};
 
 export default app;

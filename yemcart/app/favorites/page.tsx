@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { auth } from "@/lib/firebase";
-import { getUserFavorites, removeUserFavorite } from "@/lib/storeService";
+import { auth, getUserFavorites, removeUserFavorite } from "@/lib/firebase";
 import { Product } from "@/lib/types";
 import { User as FirebaseUser } from "firebase/auth";
 
@@ -89,7 +88,7 @@ export default function FavoritesPage() {
           <div className="rounded-[32px] bg-red-50 p-8 text-red-700 shadow-sm">{error}</div>
         ) : favorites.length === 0 ? (
           <div className="rounded-[32px] bg-white p-10 text-center shadow-sm">
-            <p className="text-xl font-semibold text-slate-900">لم تضف أي منتج بعد</p>
+            <p className="text-xl font-semibold text-slate-900">لا توجد منتجات في المفضلة</p>
             <p className="mt-3 text-slate-600">ابدأ بحفظ المنتجات لتظهر هنا.</p>
             <Link href="/products" className="mt-6 inline-flex rounded-full bg-pink-600 px-6 py-3 text-white transition hover:bg-pink-700">
               تصفح المنتجات

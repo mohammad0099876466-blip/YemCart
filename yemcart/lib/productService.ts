@@ -248,6 +248,8 @@ export async function getSellerProducts(userId: string): Promise<Product[]> {
   return snapshot.docs.map((doc) => toProduct(doc.data() as DocumentData, doc.id));
 }
 
+export const getUserProducts = getSellerProducts;
+
 export async function getFeaturedProducts(): Promise<Product[]> {
   if (!db) {
     throw new Error("Firestore is unavailable.");
