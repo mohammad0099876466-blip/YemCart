@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser, getAuthErrorMessage } from "@/lib/auth";
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,34 +18,38 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      if (!email || !password || !confirmPassword) {
+      if (!email.trim() || !password || !confirmPassword) {
         setError("جميع الحقول مطلوبة");
-        setLoading(false);
+        return;
+      }
+
+      if (!isValidEmail(email)) {
+        setError("البريد الإلكتروني غير صحيح");
+        return;
+      }
+
+      if (password.length < 6) {
+        setError("كلمة المرور ضعيفة (6 أحرف على الأقل)");
         return;
       }
 
       if (password !== confirmPassword) {
         setError("كلمات المرور غير متطابقة");
-        setLoading(false);
         return;
       }
 
-      if (password.length < 6) {
-        setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
-        setLoading(false);
-        return;
-      }
-
-      await registerUser(email, password, role);
-      router.push("/dashboard");
+      await registerUser(email.trim(), password, role);
+      router.replace("/");
     } catch (error: unknown) {
+      console.error("Registration failed:", error);
       setError(getAuthErrorMessage(error));
+    } finally {
       setLoading(false);
     }
   };

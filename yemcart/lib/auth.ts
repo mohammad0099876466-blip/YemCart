@@ -41,16 +41,25 @@ function isFirebaseError(error: unknown): error is { code?: string; message?: st
 function formatAuthErrorMessage(error: unknown): string {
   const errorCode = isFirebaseError(error) ? error.code ?? "" : "";
   const messages: Record<string, string> = {
-    "auth/email-already-in-use": "البريد الإلكتروني مستخدم بالفعل",
+    "auth/email-already-in-use": "هذا البريد مستخدم مسبقاً",
     "auth/invalid-email": "البريد الإلكتروني غير صحيح",
-    "auth/weak-password": "كلمة المرور ضعيفة جداً (يجب أن تكون 6 أحرف على الأقل)",
+    "auth/weak-password": "كلمة المرور ضعيفة (6 أحرف على الأقل)",
+    "auth/network-request-failed": "مشكلة في الاتصال بالإنترنت",
     "auth/user-not-found": "المستخدم غير موجود",
     "auth/wrong-password": "كلمة المرور غير صحيحة",
     "auth/operation-not-allowed": "يُحظر تسجيل المستخدمين حالياً",
     "auth/too-many-requests": "حاولت عدة مرات. حاول لاحقاً",
   };
 
-  return messages[errorCode] || (isFirebaseError(error) ? error.message || "حدث خطأ ما" : "حدث خطأ ما");
+  if (isFirebaseError(error)) {
+    return messages[errorCode] || error.message || "حدث خطأ ما";
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "حدث خطأ ما";
 }
 
 export async function registerUser(
@@ -89,12 +98,6 @@ export async function registerUser(
       sampleProductImages: profile?.sampleProductImages || [],
       bio: profile?.bio || "",
     };
-
-    if (role === "seller") {
-      if (!profile?.displayName || !profile?.bankAccountName || !profile?.idImageUrl || !profile?.storeLocation || !profile?.storeName || !profile?.sampleProductImages || profile.sampleProductImages.length < 3) {
-        throw new Error("جميع بيانات البائع مطلوبة ويجب أن تتضمن 3 صور منتجات على الأقل.");
-      }
-    }
 
     await Promise.all([
       setDoc(doc(db, "users", firebaseUser.uid), basePayload),
