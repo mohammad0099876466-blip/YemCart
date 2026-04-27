@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,7 @@ export default function ProductsListPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged(async (currentUser: FirebaseUser | null) => {
       if (!currentUser) {
         router.push("/login");
@@ -25,8 +27,8 @@ export default function ProductsListPage() {
       try {
         const items = await getUserProducts(currentUser.uid);
         setProducts(items);
-      } catch (error: any) {
-        setError(error.message || "فشل تحميل المنتجات.");
+      } catch (error: unknown) {
+        setError(error instanceof Error ? error.message : "فشل تحميل المنتجات.");
       } finally {
         setLoading(false);
       }
@@ -44,8 +46,8 @@ export default function ProductsListPage() {
     try {
       await deleteProduct(id, imagePath);
       setProducts((prev) => prev.filter((product) => product.id !== id));
-    } catch (error: any) {
-      setError(error.message || "حدث خطأ أثناء حذف المنتج.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "حدث خطأ أثناء حذف المنتج.");
     } finally {
       setDeleting(null);
     }
@@ -95,10 +97,13 @@ export default function ProductsListPage() {
 
               <div className="mt-5 grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
                 <div className="overflow-hidden rounded-3xl bg-slate-100">
-                  <img
+                  <Image
                     src={product.imageUrl}
                     alt={product.name}
+                    width={500}
+                    height={280}
                     className="h-56 w-full object-cover"
+                    unoptimized
                   />
                 </div>
 

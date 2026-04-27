@@ -26,8 +26,8 @@ export default function LoginPage() {
 
       await loginUser(email, password);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err));
+    } catch (error: unknown) {
+      setError(getAuthErrorMessage(error));
       setLoading(false);
     }
   };

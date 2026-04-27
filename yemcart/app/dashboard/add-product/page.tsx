@@ -1,26 +1,32 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
-import { addProductItem } from "@/lib/productService";
+import { addProductItem, getCategories } from "@/lib/productService";
 import { getUserData } from "@/lib/auth";
 import { User as FirebaseUser } from "firebase/auth";
+import { Category } from "@/lib/types";
 
 export default function AddProductPage() {
   const router = useRouter();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [imageUrl, setImageUrl] = useState("");
+  const [category, setCategory] = useState<string>("أزياء");
+  const [description, setDescription] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged(async (currentUser: FirebaseUser | null) => {
       if (!currentUser) {
         router.push("/login");
@@ -35,6 +41,18 @@ export default function AddProductPage() {
 
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      const list = await getCategories();
+      setCategories(list);
+      if (list.length > 0) {
+        setCategory(list[0].name);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -51,7 +69,7 @@ export default function AddProductPage() {
       return;
     }
 
-    if (!name.trim() || !price || !imageUrl.trim()) {
+    if (!name.trim() || !price || !imageUrl.trim() || !category.trim()) {
       setError("جميع الحقول مطلوبة.");
       return;
     }
@@ -64,14 +82,18 @@ export default function AddProductPage() {
         price,
         imageUrl: imageUrl.trim(),
         userId: user.uid,
+        description: description.trim(),
+        category,
       });
 
       setName("");
       setPrice(0);
       setImageUrl("");
+      setDescription("");
       setSuccess("تمت إضافة المنتج بنجاح.");
-    } catch (error: any) {
-      setError(error.message || "فشل إضافة المنتج.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "فشل إضافة المنتج.";
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -95,7 +117,7 @@ export default function AddProductPage() {
           <div className="mb-8">
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">إضافة منتج جديد</p>
             <h1 className="mt-4 text-4xl font-bold text-slate-900">أضف منتجك إلى المتجر</h1>
-            <p className="mt-3 text-slate-600">يمكنك إضافة منتج جديد، وسيظهر لجميع المستخدمين بعد الحفظ.</p>
+            <p className="mt-3 text-slate-600">أدرج منتجاً جديداً وسيظهر مباشرةً للمستخدمين بعد الحفظ.</p>
           </div>
 
           {role !== "seller" ? (
@@ -145,14 +167,44 @@ export default function AddProductPage() {
                 </label>
               </div>
 
+              <div className="grid gap-6 lg:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-semibold text-slate-700">القسم</span>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    disabled={saving}
+                  >
+                    {categories.map((item) => (
+                      <option key={item.id} value={item.name}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-slate-700">رابط صورة المنتج</span>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="https://"
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+
               <label className="block">
-                <span className="text-sm font-semibold text-slate-700">رابط صورة المنتج</span>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                <span className="text-sm font-semibold text-slate-700">وصف المنتج</span>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
                   className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="https://"
+                  placeholder="اكتب وصفًا قصيرًا للمنتج"
                   disabled={saving}
                 />
               </label>
@@ -160,10 +212,13 @@ export default function AddProductPage() {
               {imageUrl.trim() && (
                 <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 p-4">
                   <p className="mb-2 text-sm font-semibold text-slate-700">معاينة الصورة</p>
-                  <img
+                  <Image
                     src={imageUrl}
                     alt="معاينة المنتج"
+                    width={900}
+                    height={400}
                     className="h-64 w-full rounded-3xl object-cover"
+                    unoptimized
                   />
                 </div>
               )}

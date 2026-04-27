@@ -6,7 +6,7 @@ import {
   signOut,
   User as FirebaseUser,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, DocumentData, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { User } from "./types";
 
@@ -18,6 +18,10 @@ export async function registerUser(
   password: string,
   role: "buyer" | "seller" = "buyer"
 ): Promise<User> {
+  if (!auth) {
+    throw new Error("Firebase authentication is unavailable.");
+  }
+
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
@@ -29,6 +33,10 @@ export async function registerUser(
       createdAt: new Date(),
     };
 
+    if (!db) {
+      throw new Error("Firestore is unavailable.");
+    }
+
     await setDoc(doc(db, "users_data", firebaseUser.uid), {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
@@ -37,28 +45,32 @@ export async function registerUser(
     });
 
     return newUser;
-  } catch (error: any) {
-    console.error("Register error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "خطأ أثناء التسجيل";
+    console.error("Register error:", message);
     throw error;
   }
 }
 
 export async function getUserData(uid: string): Promise<User | null> {
+  if (!db) {
+    throw new Error("Firestore is unavailable.");
+  }
   const docSnapshot = await getDoc(doc(db, "users_data", uid));
-  let data = docSnapshot.exists() ? docSnapshot.data() as any : null;
+  let data: DocumentData | null = docSnapshot.exists() ? docSnapshot.data() : null;
 
   if (!data) {
     const fallbackSnapshot = await getDoc(doc(db, "users", uid));
     if (!fallbackSnapshot.exists()) {
       return null;
     }
-    data = fallbackSnapshot.data() as any;
+    data = fallbackSnapshot.data();
   }
 
   return {
-    uid: data.uid,
-    email: data.email,
-    role: data.role || "buyer",
+    uid: String(data.uid),
+    email: String(data.email ?? ""),
+    role: (data.role as User["role"]) || "buyer",
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
   };
 }
@@ -67,11 +79,16 @@ export async function getUserData(uid: string): Promise<User | null> {
  * Login user with email and password
  */
 export async function loginUser(email: string, password: string): Promise<FirebaseUser> {
+  if (!auth) {
+    throw new Error("Firebase authentication is unavailable.");
+  }
+
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
-  } catch (error: any) {
-    console.error("Login error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "خطأ أثناء تسجيل الدخول";
+    console.error("Login error:", message);
     throw error;
   }
 }
@@ -80,10 +97,15 @@ export async function loginUser(email: string, password: string): Promise<Fireba
  * Logout current user
  */
 export async function logoutUser(): Promise<void> {
+  if (!auth) {
+    throw new Error("Firebase authentication is unavailable.");
+  }
+
   try {
     await signOut(auth);
-  } catch (error: any) {
-    console.error("Logout error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "خطأ أثناء تسجيل الخروج";
+    console.error("Logout error:", message);
     throw error;
   }
 }
@@ -91,8 +113,12 @@ export async function logoutUser(): Promise<void> {
 /**
  * Get error message from Firebase error
  */
-export function getAuthErrorMessage(error: any): string {
-  const errorCode = error.code || "";
+function isFirebaseError(error: unknown): error is { code?: string; message?: string } {
+  return typeof error === "object" && error !== null && "code" in error;
+}
+
+export function getAuthErrorMessage(error: unknown): string {
+  const errorCode = isFirebaseError(error) ? error.code ?? "" : "";
   const messages: Record<string, string> = {
     "auth/email-already-in-use": "البريد الإلكتروني مستخدم بالفعل",
     "auth/invalid-email": "البريد الإلكتروني غير صحيح",
@@ -103,5 +129,5 @@ export function getAuthErrorMessage(error: any): string {
     "auth/too-many-requests": "حاولت عدة مرات. حاول لاحقاً",
   };
 
-  return messages[errorCode] || error.message || "حدث خطأ ما";
+  return messages[errorCode] || (isFirebaseError(error) ? error.message || "حدث خطأ ما" : "حدث خطأ ما");
 }

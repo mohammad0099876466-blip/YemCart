@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -33,8 +34,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         setPrice(item.price);
         setDescription(item.description || "");
         setPreview(item.imageUrl);
-      } catch (error: any) {
-        setError(error.message || "حدث خطأ أثناء تحميل المنتج.");
+      } catch (error: unknown) {
+        setError(error instanceof Error ? error.message : "حدث خطأ أثناء تحميل المنتج.");
       } finally {
         setLoading(false);
       }
@@ -78,8 +79,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       setSuccess("تم تحديث المنتج بنجاح.");
       router.push("/dashboard/products");
-    } catch (error: any) {
-      setError(error.message || "فشل تحديث المنتج.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "فشل تحديث المنتج.");
     } finally {
       setSaving(false);
     }
@@ -94,8 +95,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     try {
       await deleteProduct(id, product.imagePath);
       router.push("/dashboard/products");
-    } catch (error: any) {
-      setError(error.message || "فشل حذف المنتج.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "فشل حذف المنتج.");
     } finally {
       setSaving(false);
     }
@@ -179,10 +180,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             {preview ? (
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                 <p className="mb-2 text-sm font-semibold text-slate-700">معاينة الصورة</p>
-                <img
+                <Image
                   src={preview}
                   alt="معاينة المنتج"
+                  width={900}
+                  height={384}
                   className="h-48 w-full rounded-3xl object-cover"
+                  unoptimized
                 />
               </div>
             ) : (

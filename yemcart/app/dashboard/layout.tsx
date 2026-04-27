@@ -20,6 +20,7 @@ export default function DashboardLayout({
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
       if (!currentUser) {
         router.push("/login");

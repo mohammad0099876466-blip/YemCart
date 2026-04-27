@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ export default function ProductsPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
       setUser(currentUser);
     });
@@ -55,8 +57,8 @@ export default function ProductsPage() {
         );
 
         setSellers(loadedSellers);
-      } catch (error: any) {
-        setError(error.message || "فشل تحميل المنتجات.");
+      } catch (error: unknown) {
+        setError(error instanceof Error ? error.message : "فشل تحميل المنتجات.");
       } finally {
         setLoading(false);
       }
@@ -107,10 +109,13 @@ export default function ProductsPage() {
                 className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70 transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
               >
                 <div className="mb-6 overflow-hidden rounded-3xl bg-slate-100">
-                  <img
+                  <Image
                     src={product.imageUrl}
                     alt={product.name}
+                    width={500}
+                    height={280}
                     className="h-56 w-full object-cover"
+                    unoptimized
                   />
                 </div>
 

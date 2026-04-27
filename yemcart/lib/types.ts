@@ -13,19 +13,40 @@ export interface SellerInfo {
 export interface Product {
   id: string;
   name: string;
+  title?: string;
   price: number;
   description?: string;
   imageUrl: string;
-  title?: string;
   image?: string;
   imagePath?: string;
   userId?: string;
   sellerId?: string;
+  category?: string;
+  featured?: boolean;
   published?: boolean;
   createdAt?: number;
   updatedAt?: number;
   sellerEmail?: string;
   sellerRole?: "buyer" | "seller" | "admin";
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  active: boolean;
+  imageUrl?: string;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
 export interface AuthContextType {

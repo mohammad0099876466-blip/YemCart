@@ -40,8 +40,8 @@ export default function RegisterPage() {
 
       await registerUser(email, password, role);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err));
+    } catch (error: unknown) {
+      setError(getAuthErrorMessage(error));
       setLoading(false);
     }
   };
