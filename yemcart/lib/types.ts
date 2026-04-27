@@ -4,38 +4,37 @@ export interface User {
   role: "buyer" | "seller" | "admin";
   createdAt: Date;
   displayName?: string;
-  sellerVerified?: boolean;
+  phoneNumber?: string;
+  bio?: string;
+  profileImageUrl?: string;
+  bannerImageUrl?: string;
+  bankAccountName?: string;
+  idImageUrl?: string;
   storeName?: string;
+  storeDescription?: string;
   storeLocation?: {
     lat: number;
     lng: number;
   };
-  bankAccountName?: string;
-}
-
-export interface SellerInfo {
-  email: string;
-  role: "buyer" | "seller" | "admin";
+  sampleProductImages?: string[];
+  sellerVerified?: boolean;
+  followersCount?: number;
 }
 
 export interface Product {
   id: string;
   name: string;
-  title?: string;
   price: number;
   description?: string;
   imageUrl: string;
-  image?: string;
   imagePath?: string;
   userId?: string;
-  sellerId?: string;
   category?: string;
   featured?: boolean;
   published?: boolean;
+  shippingPrice?: number;
   createdAt?: number;
   updatedAt?: number;
-  sellerEmail?: string;
-  sellerRole?: "buyer" | "seller" | "admin";
 }
 
 export interface Category {
@@ -57,9 +56,39 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface Review {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: number;
+}
+
+export interface OrderItem {
+  id: string;
+  product: Product;
+  quantity: number;
+  totalPrice: number;
+  createdAt: number;
+}
+
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
+  isSearchOpen: boolean;
+  setIsSearchOpen: (value: boolean) => void;
+  activeCategory: string;
+  setActiveCategory: (value: string) => void;
+  ratingFilter: number;
+  setRatingFilter: (value: number) => void;
+  priceFilter: { min: number; max: number };
+  setPriceFilter: (value: { min: number; max: number }) => void;
 }

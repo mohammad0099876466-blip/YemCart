@@ -20,15 +20,15 @@ import {
   uploadBytes,
 } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
-import { Banner, Category, Product } from "@/lib/types";
+import { Banner, Category, Product, User } from "@/lib/types";
 
 const defaultCategories: Category[] = [
-  { id: "fashion", name: "أزياء", icon: "👗" },
-  { id: "beauty", name: "جمال", icon: "💄" },
-  { id: "electronics", name: "إلكترونيات", icon: "📱" },
-  { id: "home", name: "ديكور", icon: "🛋️" },
-  { id: "bags", name: "حقائب", icon: "👜" },
-  { id: "shoes", name: "أحذية", icon: "👟" },
+  { id: "fashion", name: "أزياء", icon: "أزياء" },
+  { id: "beauty", name: "جمال", icon: "جمال" },
+  { id: "electronics", name: "إلكترونيات", icon: "إلكترونيات" },
+  { id: "home", name: "ديكور", icon: "ديكور" },
+  { id: "bags", name: "حقائب", icon: "حقائب" },
+  { id: "shoes", name: "أحذية", icon: "أحذية" },
 ];
 
 const defaultBanner: Banner = {
@@ -44,7 +44,7 @@ export async function uploadProductImage(file: File) {
     throw new Error("Firebase storage is unavailable.");
   }
 
-  const imageRef = ref(storage, `products/${Date.now()}-${file.name}`);
+  const imageRef = ref(storage, `images/${Date.now()}-${file.name}`);
   await uploadBytes(imageRef, file);
   const imageUrl = await getDownloadURL(imageRef);
   return {
@@ -62,6 +62,7 @@ export async function addProductItem(product: {
   category?: string;
   featured?: boolean;
   published?: boolean;
+  shippingPrice?: number;
 }) {
   if (!db) {
     throw new Error("Firestore is unavailable.");
@@ -73,20 +74,21 @@ export async function addProductItem(product: {
     description: product.description || "",
     category: product.category || "عام",
     imageUrl: product.imageUrl,
-    image: product.imageUrl,
+    imagePath: product.imageUrl,
     userId: product.userId,
     featured: product.featured ?? false,
     published: product.published ?? true,
+    shippingPrice: product.shippingPrice ?? 5,
     createdAt: serverTimestamp(),
   });
 }
 
 export async function getCategories(): Promise<Category[]> {
-  try {
-    if (!db) {
-      throw new Error("Firestore is unavailable.");
-    }
+  if (!db) {
+    return defaultCategories;
+  }
 
+  try {
     const categoryQuery = query(collection(db, "categories"));
     const snapshot = await getDocs(categoryQuery);
 
@@ -100,7 +102,7 @@ export async function getCategories(): Promise<Category[]> {
         id: doc.id,
         name: data.name || "عام",
         icon: data.icon || "🛍️",
-      } as Category;
+      };
     });
   } catch {
     return defaultCategories;
@@ -108,18 +110,16 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getActiveBanner(): Promise<Banner | null> {
-  try {
-    if (!db) {
-      throw new Error("Firestore is unavailable.");
-    }
+  if (!db) {
+    return defaultBanner;
+  }
 
+  try {
     const bannerQuery = query(collection(db, "banners"), where("active", "==", true), orderBy("title"), limit(1));
     const snapshot = await getDocs(bannerQuery);
-
     if (snapshot.empty) {
       return defaultBanner;
     }
-
     const bannerDoc = snapshot.docs[0];
     const data = bannerDoc.data() as DocumentData;
     return {
@@ -134,83 +134,57 @@ export async function getActiveBanner(): Promise<Banner | null> {
   }
 }
 
+function toProduct(data: DocumentData, id: string): Product {
+  return {
+    id,
+    name: String(data.name || "منتج"),
+    price: Number(data.price || 0),
+    description: String(data.description || ""),
+    imageUrl: String(data.imageUrl || ""),
+    imagePath: String(data.imagePath || ""),
+    userId: String(data.userId || ""),
+    category: String(data.category || "عام"),
+    featured: Boolean(data.featured),
+    published: Boolean(data.published),
+    shippingPrice: Number(data.shippingPrice || 5),
+    createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
+    updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : undefined,
+  };
+}
+
 export async function getProducts(): Promise<Product[]> {
   if (!db) {
     throw new Error("Firestore is unavailable.");
   }
 
-  try {
-    const productsQuery = query(
-      collection(db, "products"),
-      where("published", "==", true),
-      orderBy("createdAt", "desc")
-    );
-    const snapshot = await getDocs(productsQuery);
-    return snapshot.docs.map((doc) => {
-      const data = doc.data() as DocumentData;
-      return {
-        id: doc.id,
-        name: data.name,
-        price: data.price,
-        description: data.description,
-        imageUrl: data.imageUrl,
-        imagePath: data.imagePath,
-        userId: data.userId,
-        category: data.category,
-        featured: data.featured,
-        published: data.published,
-        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
-      } as Product;
-    });
-  } catch {
-    const fallbackQuery = query(collection(db, "products"), where("published", "==", true));
-    const snapshot = await getDocs(fallbackQuery);
-    return snapshot.docs.map((doc) => {
-      const data = doc.data() as DocumentData;
-      return {
-        id: doc.id,
-        name: data.name,
-        price: data.price,
-        description: data.description,
-        imageUrl: data.imageUrl,
-        imagePath: data.imagePath,
-        userId: data.userId,
-        category: data.category,
-        featured: data.featured,
-        published: data.published,
-        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
-      } as Product;
-    });
-  }
+  const productsQuery = query(collection(db, "products"), where("published", "==", true), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(productsQuery);
+  return snapshot.docs.map((doc) => toProduct(doc.data() as DocumentData, doc.id));
 }
 
-export async function getUserProducts(userId: string): Promise<Product[]> {
-  if (!db) {
-    throw new Error("Firestore is unavailable.");
-  }
+export async function searchProducts(
+  searchText: string,
+  category?: string,
+  minPrice?: number,
+  maxPrice?: number,
+  minRating?: number
+): Promise<Product[]> {
+  const items = await getProducts();
+  const term = searchText.trim().toLowerCase();
 
-  const productsQuery = query(
-    collection(db, "products"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
-  const snapshot = await getDocs(productsQuery);
+  return items.filter((product) => {
+    const matchesText =
+      !term ||
+      product.name.toLowerCase().includes(term) ||
+      product.description?.toLowerCase().includes(term) ||
+      product.category?.toLowerCase().includes(term);
 
-  return snapshot.docs.map((doc) => {
-    const data = doc.data() as DocumentData;
-    return {
-      id: doc.id,
-      name: data.name,
-      price: data.price,
-      description: data.description,
-      imageUrl: data.imageUrl,
-      imagePath: data.imagePath,
-      userId: data.userId,
-      category: data.category,
-      featured: data.featured,
-      published: data.published,
-      createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
-    } as Product;
+    const matchesCategory = !category || category === "الكل" || product.category === category;
+    const matchesPrice =
+      (minPrice === undefined || product.price >= minPrice) &&
+      (maxPrice === undefined || product.price <= maxPrice);
+
+    return matchesText && matchesCategory && matchesPrice;
   });
 }
 
@@ -220,26 +194,93 @@ export async function getProductById(id: string): Promise<Product | null> {
   }
 
   const productDoc = await getDoc(doc(db, "products", id));
-
   if (!productDoc.exists()) {
     return null;
   }
 
-  const data = productDoc.data() as DocumentData;
+  return toProduct(productDoc.data() as DocumentData, productDoc.id);
+}
 
+export async function getSellerById(id: string): Promise<User | null> {
+  if (!db) {
+    throw new Error("Firestore is unavailable.");
+  }
+
+  const sellerDoc = await getDoc(doc(db, "users", id));
+  if (!sellerDoc.exists()) {
+    return null;
+  }
+
+  const data = sellerDoc.data() as DocumentData;
   return {
-    id: productDoc.id,
-    name: data.name,
-    price: data.price,
-    description: data.description,
-    imageUrl: data.imageUrl,
-    imagePath: data.imagePath,
-    userId: data.userId,
-    category: data.category,
-    featured: data.featured,
-    published: data.published,
-    createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
+    uid: String(data.uid || id),
+    email: String(data.email || ""),
+    role: (data.role as User["role"]) || "buyer",
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+    displayName: data.displayName ? String(data.displayName) : undefined,
+    phoneNumber: data.phoneNumber ? String(data.phoneNumber) : undefined,
+    bio: data.bio ? String(data.bio) : undefined,
+    profileImageUrl: data.profileImageUrl ? String(data.profileImageUrl) : undefined,
+    bannerImageUrl: data.bannerImageUrl ? String(data.bannerImageUrl) : undefined,
+    bankAccountName: data.bankAccountName ? String(data.bankAccountName) : undefined,
+    storeName: data.storeName ? String(data.storeName) : undefined,
+    storeDescription: data.storeDescription ? String(data.storeDescription) : undefined,
+    storeLocation:
+      data.storeLocation && typeof data.storeLocation === "object"
+        ? {
+            lat: Number(data.storeLocation.lat || 0),
+            lng: Number(data.storeLocation.lng || 0),
+          }
+        : undefined,
+    sampleProductImages: Array.isArray(data.sampleProductImages) ? data.sampleProductImages.map(String) : undefined,
+    sellerVerified: Boolean(data.sellerVerified),
+    followersCount: Number(data.followersCount || 0),
   };
+}
+
+export async function getSellerProducts(userId: string): Promise<Product[]> {
+  if (!db) {
+    throw new Error("Firestore is unavailable.");
+  }
+
+  const productsQuery = query(collection(db, "products"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(productsQuery);
+  return snapshot.docs.map((doc) => toProduct(doc.data() as DocumentData, doc.id));
+}
+
+export async function getFeaturedProducts(): Promise<Product[]> {
+  if (!db) {
+    throw new Error("Firestore is unavailable.");
+  }
+
+  const productsQuery = query(collection(db, "products"), where("published", "==", true), where("featured", "==", true), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(productsQuery);
+  return snapshot.docs.map((doc) => toProduct(doc.data() as DocumentData, doc.id));
+}
+
+export async function getTopSellers(): Promise<User[]> {
+  if (!db) {
+    throw new Error("Firestore is unavailable.");
+  }
+
+  const sellersQuery = query(collection(db, "users"), where("role", "==", "seller"));
+  const snapshot = await getDocs(sellersQuery);
+  return snapshot.docs.map((sellerDoc) => {
+    const data = sellerDoc.data() as DocumentData;
+    return {
+      uid: sellerDoc.id,
+      email: String(data.email ?? ""),
+      role: "seller",
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+      displayName: data.displayName ? String(data.displayName) : undefined,
+      profileImageUrl: data.profileImageUrl ? String(data.profileImageUrl) : undefined,
+      bannerImageUrl: data.bannerImageUrl ? String(data.bannerImageUrl) : undefined,
+      storeName: data.storeName ? String(data.storeName) : undefined,
+      storeDescription: data.storeDescription ? String(data.storeDescription) : undefined,
+      sellerVerified: Boolean(data.sellerVerified),
+      followersCount: Number(data.followersCount || 0),
+    };
+  });
 }
 
 export async function updateProduct(
@@ -274,7 +315,6 @@ export async function updateProduct(
   }
 
   updateData.updatedAt = serverTimestamp();
-
   await updateDoc(productRef, updateData);
 }
 
