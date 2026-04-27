@@ -5,6 +5,11 @@ export interface User {
   createdAt: Date;
 }
 
+export interface SellerInfo {
+  email: string;
+  role: "buyer" | "seller" | "admin";
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -19,6 +24,8 @@ export interface Product {
   published?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  sellerEmail?: string;
+  sellerRole?: "buyer" | "seller" | "admin";
 }
 
 export interface AuthContextType {

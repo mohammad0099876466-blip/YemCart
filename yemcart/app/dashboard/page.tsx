@@ -4,19 +4,24 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
-import { logoutUser } from "@/lib/auth";
+import { getUserData, logoutUser } from "@/lib/auth";
 import { User as FirebaseUser } from "firebase/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser: FirebaseUser | null) => {
       if (currentUser) {
         setUser(currentUser);
+        const profile = await getUserData(currentUser.uid);
+        if (profile) {
+          setUserRole(profile.role);
+        }
       } else {
         router.push("/login");
       }
@@ -65,6 +70,9 @@ export default function DashboardPage() {
           <div className="bg-blue-50 p-6 rounded-lg mb-6">
             <p className="text-gray-700">
               <span className="font-semibold">البريد الإلكتروني:</span> {user?.email}
+            </p>
+            <p className="text-gray-700 mt-2">
+              <span className="font-semibold">دور المستخدم:</span> {userRole || "غير محدد"}
             </p>
             <p className="text-gray-700 mt-2">
               <span className="font-semibold">معرّف المستخدم:</span> {user?.uid.substring(0, 12)}...

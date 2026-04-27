@@ -2,19 +2,59 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
 import { getProducts } from "@/lib/productService";
+import { getUserData } from "@/lib/auth";
 import { Product } from "@/lib/types";
+import { User as FirebaseUser } from "firebase/auth";
+
+interface SellerInfo {
+  email: string;
+  role: string;
+}
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [sellers, setSellers] = useState<Record<string, SellerInfo>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser: FirebaseUser | null) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       try {
         const items = await getProducts();
         setProducts(items);
+
+        const uniqueSellerIds = Array.from(
+          new Set(items.map((item) => item.userId).filter(Boolean))
+        );
+
+        const sellerPromises = uniqueSellerIds.map(async (sellerId) => {
+          const seller = await getUserData(sellerId as string);
+          return [sellerId, seller] as const;
+        });
+
+        const loadedSellers = Object.fromEntries(
+          (await Promise.all(sellerPromises)).map(([sellerId, seller]) => [
+            sellerId,
+            seller
+              ? { email: seller.email, role: seller.role }
+              : { email: "غير معروف", role: "غير معروف" },
+          ])
+        );
+
+        setSellers(loadedSellers);
       } catch (error: any) {
         setError(error.message || "فشل تحميل المنتجات.");
       } finally {
@@ -24,6 +64,15 @@ export default function ProductsPage() {
 
     load();
   }, []);
+
+  const handleBuy = (productId: string) => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    router.push(`/products/${productId}`);
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
@@ -67,22 +116,39 @@ export default function ProductsPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-2xl font-semibold text-slate-900">{product.name}</h2>
+                    <div className="flex items-center justify-between gap-4">
+                      <h2 className="text-2xl font-semibold text-slate-900">{product.name}</h2>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+                        {sellers[product.userId || ""]?.role === "seller" ? "بائع" : "مستخدم"}
+                      </span>
+                    </div>
                     {product.description && (
                       <p className="mt-2 text-slate-500 text-sm leading-relaxed">
                         {product.description}
                       </p>
                     )}
+                    <p className="mt-3 text-sm text-slate-500">
+                      البائع: {sellers[product.userId || ""]?.email || "غير معروف"}
+                    </p>
                   </div>
 
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-2xl font-bold text-blue-600">${product.price.toFixed(2)}</span>
-                    <Link
-                      href="/"
-                      className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:bg-blue-700"
-                    >
-                      عرض المنتج
-                    </Link>
+                    <div className="grid gap-3 sm:auto-cols-fr sm:grid-flow-col">
+                      <Link
+                        href={`/products/${product.id}`}
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition duration-300 hover:bg-slate-100"
+                      >
+                        عرض المنتج
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleBuy(product.id)}
+                        className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:bg-green-700"
+                      >
+                        {user ? "شراء الآن" : "تسجيل الدخول للشراء"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>

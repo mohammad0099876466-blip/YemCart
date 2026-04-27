@@ -6,32 +6,34 @@ import {
   signOut,
   User as FirebaseUser,
 } from "firebase/auth";
-import { collection, doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { User } from "./types";
 
 /**
- * Register a new user with email and password
+ * Register a new user with email and password and save role to Firestore
  */
-export async function registerUser(email: string, password: string): Promise<User> {
+export async function registerUser(
+  email: string,
+  password: string,
+  role: "buyer" | "seller" = "buyer"
+): Promise<User> {
   try {
-    // Create Firebase Auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
 
-    // Save user to Firestore
     const newUser: User = {
       uid: firebaseUser.uid,
       email: firebaseUser.email || "",
-      role: "buyer",
+      role,
       createdAt: new Date(),
     };
 
-    await setDoc(doc(db, "users", firebaseUser.uid), {
+    await setDoc(doc(db, "users_data", firebaseUser.uid), {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      role: "buyer",
-      createdAt: new Date().toISOString(),
+      role,
+      createdAt: serverTimestamp(),
     });
 
     return newUser;
@@ -39,6 +41,26 @@ export async function registerUser(email: string, password: string): Promise<Use
     console.error("Register error:", error.message);
     throw error;
   }
+}
+
+export async function getUserData(uid: string): Promise<User | null> {
+  const docSnapshot = await getDoc(doc(db, "users_data", uid));
+  let data = docSnapshot.exists() ? docSnapshot.data() as any : null;
+
+  if (!data) {
+    const fallbackSnapshot = await getDoc(doc(db, "users", uid));
+    if (!fallbackSnapshot.exists()) {
+      return null;
+    }
+    data = fallbackSnapshot.data() as any;
+  }
+
+  return {
+    uid: data.uid,
+    email: data.email,
+    role: data.role || "buyer",
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+  };
 }
 
 /**

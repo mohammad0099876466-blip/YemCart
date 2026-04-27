@@ -114,6 +114,8 @@ export async function getProductById(id: string): Promise<Product | null> {
     description: data.description,
     imageUrl: data.imageUrl,
     imagePath: data.imagePath,
+    userId: data.userId,
+    published: data.published,
     createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : undefined,
   };
 }

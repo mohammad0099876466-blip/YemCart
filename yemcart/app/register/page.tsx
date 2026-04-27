@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,7 @@ export default function RegisterPage() {
         return;
       }
 
-      await registerUser(email, password);
+      await registerUser(email, password, role);
       router.push("/dashboard");
     } catch (err: any) {
       setError(getAuthErrorMessage(err));
@@ -80,6 +81,37 @@ export default function RegisterPage() {
               placeholder="••••••••"
               disabled={loading}
             />
+          </div>
+
+          {/* Role Selection */}
+          <div>
+            <p className="block text-gray-700 font-semibold mb-2">نوع الحساب</p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-3 bg-white cursor-pointer">
+                <input
+                  type="radio"
+                  name="role"
+                  value="buyer"
+                  checked={role === "buyer"}
+                  onChange={() => setRole("buyer")}
+                  disabled={loading}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                مشتري
+              </label>
+              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-3 bg-white cursor-pointer">
+                <input
+                  type="radio"
+                  name="role"
+                  value="seller"
+                  checked={role === "seller"}
+                  onChange={() => setRole("seller")}
+                  disabled={loading}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                بائع
+              </label>
+            </div>
           </div>
 
           {/* Confirm Password Input */}
